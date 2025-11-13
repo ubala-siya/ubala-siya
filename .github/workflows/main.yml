@@ -1,0 +1,89 @@
+
+name: Commit
+
+on:
+  schedule:
+    # Every 2 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger
+
+permissions:
+  contents: write
+  
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Debug - Show current time
+      run: |
+        echo "Current UTC time: $(date)"
+        echo "Timezone: $(date +%Z)"
+        
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        clean: true
+        
+    - name: Debug - Show repo status
+      run: |
+        echo "Current branch: $(git branch --show-current)"
+        echo "Remote URL: $(git remote get-url origin)"
+        ls -la
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "ubala-siya"
+        git config --global user.email "ubesiya62@gmail.com"
+        git config --list | grep user
+        
+    - name: Create or update file
+      run: |
+        echo "=== Creating file ==="
+        echo "commit at $(date)" >> commits.txt
+        echo "number: $(wc -l < commits.txt 2>/dev/null || echo 1)" >> commits.txt
+        echo "--- balxzzy ---" >> commits.txt
+        echo "=== File created ==="
+        cat commits.txt | tail -3
+        
+    - name: Debug - Check file changes
+      run: |
+        echo "=== Git status ==="
+        git status
+        echo "=== Git diff ==="
+        git diff
+        
+    - name: Commit with current date
+      run: |
+        echo "=== Adding files ==="
+        git add .
+        git status
+        
+        echo "=== Committing with current date ==="
+        git commit -m "Auto commit: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Commit successful!"
+        
+    - name: Debug - Show commit info
+      run: |
+        echo "=== Latest commit ==="
+        git log -1 --oneline
+        git log -1 --format="%H %an %ae %ad %cd %s"
+        
+    - name: Push changes
+      run: |
+        echo "=== Pushing to repository ==="
+        git remote -v
+        
+        # Pull first to avoid conflicts
+        git pull origin main --rebase || true
+        
+        # Force push if still conflicts
+        git push origin main || git push origin main --force-with-lease
+        
+        echo "Push successful!"
+        
+    - name: Final debug
+      run: |
+        echo "=== Workflow completed at $(date) ==="
